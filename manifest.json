@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Screen Explainer",
+  "version": "0.1.0",
+  "description": "Explains what's on your screen.",
+  "permissions": ["sidePanel"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Screen Explainer"
+  }
+}
