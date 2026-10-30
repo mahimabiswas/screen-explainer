@@ -12,5 +12,14 @@
   },
   "action": {
     "default_title": "Screen Explainer"
+  },
+  "commands": {
+    "explain-screen": {
+      "suggested_key": {
+        "default": "Alt+Shift+E",
+        "mac": "Alt+Shift+E"
+      },
+      "description": "Explain the current screen"
+    }
   }
 }

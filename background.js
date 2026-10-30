@@ -4,3 +4,7 @@ console.log("Screen Explainer service worker started");
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch(console.error);
+
+chrome.commands.onCommand.addListener((command) => {
+  console.log(`shortcut pressed: ${command}`);
+});
