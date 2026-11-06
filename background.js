@@ -1,11 +1,19 @@
-const MODEL = "gemini-3.8-flash";
-
 // config.local.js defines GEMINI_API_KEY. It is git-ignored and never hardcoded here.
 try {
   importScripts("config.local.js");
 } catch (err) {
   console.error("Could not load config.local.js:", err);
 }
+
+importScripts(
+  "shared/constants.js",
+  "background/capture.js",
+  "background/http.js",
+  "background/providers/gemini.js",
+  "background/providers/gemini-lite.js",
+  "background/providers/groq.js",
+  "background/model.js"
+);
 
 console.log("Screen Explainer service worker started");
 
@@ -14,85 +22,50 @@ chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch(console.error);
 
-chrome.commands.onCommand.addListener(async (command, tab) => {
+// The shortcut only opens the panel; capturing happens when an option is chosen there.
+chrome.commands.onCommand.addListener((command, tab) => {
   console.log(`shortcut pressed: ${command}`);
   if (command !== "explain-screen" || !tab) return;
 
   // Must run before any await, while Chrome still counts this as a user gesture.
   chrome.sidePanel.open({ windowId: tab.windowId }).catch(console.error);
-
-  try {
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
-      format: "png",
-    });
-    await chrome.storage.session.set({ latestScreenshot: dataUrl });
-  } catch (err) {
-    console.error("Screenshot failed:", err);
-  }
 });
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type !== "ask") return;
+const MESSAGE_HANDLERS = {
+  [MESSAGE_TYPES.CAPTURE]: async ({ mode, windowId }) => {
+    await captureContext(mode, windowId);
+    return {};
+  },
+  [MESSAGE_TYPES.ASK]: async ({ question, requestId }) => {
+    const onStatus = (text) => {
+      // Ignore the error when no side panel is open to receive it.
+      chrome.runtime
+        .sendMessage({ type: MESSAGE_TYPES.ASK_STATUS, requestId, text })
+        .catch(() => {});
+    };
+    const { text, provider, elapsedMs } = await handleAsk(question, onStatus);
+    return { answer: text, provider, elapsedMs };
+  },
+};
 
-  handleAsk(message.question)
-    .then((answer) => sendResponse({ answer }))
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handler = MESSAGE_HANDLERS[message?.type];
+  if (!handler) return;
+
+  handler(message)
+    .then(sendResponse)
     .catch((err) => sendResponse({ error: err.message }));
 
   // Keep the message channel open for the async reply.
   return true;
 });
 
-async function handleAsk(question) {
-  const { latestScreenshot } = await chrome.storage.session.get("latestScreenshot");
-  if (!latestScreenshot) {
-    throw new Error("No screenshot yet. Press Alt+Shift+E on a page first.");
-  }
-  return askModel(latestScreenshot, question);
-}
-
-// Sends one image and one question to the model and returns the answer text.
-// Swap the body of this function to change providers.
-async function askModel(imageDataUrl, question) {
-  if (typeof GEMINI_API_KEY === "undefined" || !GEMINI_API_KEY) {
-    throw new Error("No API key. Define GEMINI_API_KEY in config.local.js and reload the extension.");
-  }
-
-  const base64 = imageDataUrl.replace(/^data:image\/png;base64,/, "");
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { inline_data: { mime_type: "image/png", data: base64 } },
-              { text: question },
-            ],
-          },
-        ],
-      }),
-    }
+async function handleAsk(question, onStatus) {
+  const { [STORAGE_KEYS.LATEST_CONTEXT]: context } = await chrome.storage.session.get(
+    STORAGE_KEYS.LATEST_CONTEXT
   );
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = data.error?.message || response.statusText;
-    throw new Error(`Gemini API error (${response.status}): ${detail}`);
+  if (!context) {
+    throw new Error("Nothing captured yet. Choose an option above first.");
   }
-
-  const text = data.candidates?.[0]?.content?.parts
-    ?.map((part) => part.text || "")
-    .join("")
-    .trim();
-  if (!text) {
-    const reason = data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason;
-    throw new Error(`The model returned no answer${reason ? ` (${reason})` : ""}.`);
-  }
-  return text;
+  return askModel(context, question, { onStatus });
 }

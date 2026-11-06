@@ -1,0 +1,36 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 12px;
+}
+
+#mode-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#preview-image {
+  max-width: 100%;
+}
+
+#preview-text {
+  white-space: pre-wrap;
+  background: #f4f4f4;
+  padding: 8px;
+  max-height: 200px;
+  overflow: auto;
+}
+
+#preview-meta,
+#answer-source {
+  color: #666;
+  font-size: 0.9em;
+}
+
+#answer {
+  white-space: pre-wrap;
+}
+
+.error {
+  color: #b00020;
+}

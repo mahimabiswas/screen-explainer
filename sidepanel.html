@@ -3,26 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <title>Screen Explainer</title>
-    <style>
-      #screenshot {
-        max-width: 100%;
-      }
-      #answer {
-        white-space: pre-wrap;
-      }
-      #answer.error {
-        color: #b00020;
-      }
-    </style>
+    <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
-    <h1>hello</h1>
-    <img id="screenshot" alt="Latest screenshot" hidden />
+    <h1>Screen Explainer</h1>
+
+    <section>
+      <h2>What should I look at?</h2>
+      <!-- Filled from CAPTURE_MODES in shared/constants.js -->
+      <div id="mode-buttons"></div>
+      <p id="capture-status"></p>
+    </section>
+
+    <section id="preview" hidden>
+      <p id="preview-meta"></p>
+      <img id="preview-image" alt="Captured screen" hidden />
+      <div id="preview-text" hidden></div>
+    </section>
+
     <form id="ask-form">
-      <input id="question" type="text" placeholder="Ask about the screenshot" required />
+      <input id="question" type="text" placeholder="Ask about what you captured" required />
       <button id="ask-button" type="submit">Ask</button>
     </form>
     <div id="answer"></div>
+    <p id="answer-source"></p>
+
+    <script src="shared/constants.js"></script>
     <script src="sidepanel.js"></script>
   </body>
 </html>

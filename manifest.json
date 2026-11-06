@@ -3,8 +3,11 @@
   "name": "Screen Explainer",
   "version": "0.1.0",
   "description": "Explains what's on your screen.",
-  "permissions": ["sidePanel", "activeTab", "storage"],
-  "host_permissions": ["https://generativelanguage.googleapis.com/*"],
+  "permissions": ["sidePanel", "activeTab", "storage", "scripting"],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.groq.com/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
