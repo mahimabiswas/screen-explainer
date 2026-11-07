@@ -16,17 +16,34 @@
     </section>
 
     <section id="preview" hidden>
-      <p id="preview-meta"></p>
+      <p id="preview-meta" class="meta"></p>
       <img id="preview-image" alt="Captured screen" hidden />
       <div id="preview-text" hidden></div>
     </section>
 
-    <form id="ask-form">
-      <input id="question" type="text" placeholder="Ask about what you captured" required />
-      <button id="ask-button" type="submit">Ask</button>
-    </form>
-    <div id="answer"></div>
-    <p id="answer-source"></p>
+    <section id="chat">
+      <div class="chat-header">
+        <h2>Chat</h2>
+        <button id="new-chat" type="button">New chat</button>
+      </div>
+
+      <div id="messages"></div>
+
+      <div id="chat-error" hidden>
+        <p id="chat-error-text" class="error"></p>
+        <button id="retry" type="button">Retry</button>
+      </div>
+      <p id="chat-status" class="meta"></p>
+
+      <div class="context-row">
+        <span id="context-line" class="meta"></span>
+        <button id="look-again" type="button">Look again</button>
+      </div>
+      <form id="ask-form">
+        <input id="question" type="text" placeholder="Ask about what you captured" required />
+        <button id="ask-button" type="submit">Ask</button>
+      </form>
+    </section>
 
     <script src="shared/constants.js"></script>
     <script src="sidepanel.js"></script>

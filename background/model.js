@@ -1,8 +1,11 @@
 // Providers are tried in this order; each one is used only if the ones before it
-// fail. A provider is { id, name, isConfigured(), ask({ context, question,
-// systemInstruction, timeoutMs }) -> text }. To add one, create
-// background/providers/<name>.js, load it in background.js, and add it here.
+// fail. A provider is { id, name, supportsImages, isConfigured(),
+// ask({ history, systemInstruction, timeoutMs }) -> text }, where history is the
+// provider-neutral chat array described in background/chat.js. To add one,
+// create background/providers/<name>.js, load it in background.js, and add it here.
 const PROVIDERS = [geminiProvider, geminiLiteProvider, groqProvider];
+
+const MAX_HISTORY_MESSAGES = 6; // sent to the model per request
 
 const SYSTEM_INSTRUCTION =
   "Answer concisely, in at most about 120 words, unless the user asks for more detail.";
@@ -15,10 +18,10 @@ const COOLDOWN_MS = 60 * 1000;
 const HARD_QUOTA_COOLDOWN_MS = 60 * 60 * 1000;
 const LONG_WAIT_SECONDS = 10; // a 429 asking us to wait longer than this isn't retried
 
-// Sends a captured context ({ imageDataUrl } and/or { text }) plus a question to
-// the first provider that succeeds. onStatus(text) receives progress messages.
+// Sends the chat history (ending with a user turn) to the first provider that
+// succeeds. onStatus(text) receives progress messages.
 // Returns { text, provider, elapsedMs }.
-async function askModel(context, question, { onStatus = () => {} } = {}) {
+async function askModel(history, { onStatus = () => {} } = {}) {
   const startedAt = Date.now();
   const deadline = startedAt + TOTAL_BUDGET_MS;
 
@@ -27,12 +30,17 @@ async function askModel(context, question, { onStatus = () => {} } = {}) {
     throw new Error("No API keys found. Add GEMINI_API_KEY or GROQ_API_KEY to config.local.js and reload the extension.");
   }
 
+  const messages = trimHistory(history);
+  const needsImages = Boolean(messages.findLast((turn) => turn.role === "user")?.imageDataUrl);
+
   const cooldowns = await getCooldowns();
   const failures = [];
   const candidates = [];
   for (const provider of configured) {
     const until = cooldowns[provider.id] ?? 0;
-    if (until > startedAt) {
+    if (needsImages && !provider.supportsImages) {
+      failures.push(`${provider.name}: skipped, can't read images`);
+    } else if (until > startedAt) {
       failures.push(`${provider.name}: paused after recent failures (available again in ${formatWait(until - startedAt)})`);
     } else {
       candidates.push(provider);
@@ -43,7 +51,7 @@ async function askModel(context, question, { onStatus = () => {} } = {}) {
     const provider = candidates[i];
     const next = candidates[i + 1];
 
-    const result = await tryProvider(provider, { context, question, deadline, onStatus });
+    const result = await tryProvider(provider, { history: messages, deadline, onStatus });
     if (result.text) {
       return { text: result.text, provider: provider.name, elapsedMs: Date.now() - startedAt };
     }
@@ -63,9 +71,23 @@ async function askModel(context, question, { onStatus = () => {} } = {}) {
   throw new Error(`All providers failed.\n${failures.join("\n")}`);
 }
 
+// Keeps the last MAX_HISTORY_MESSAGES turns. The latest user turn is always
+// last, so it's always kept; a turn that still has an image is kept even if
+// it's older. The result starts with a user turn, as the providers expect.
+function trimHistory(history) {
+  const imageTurn = history.findLast((turn) => turn.imageDataUrl);
+  const kept = history.slice(-MAX_HISTORY_MESSAGES);
+  if (imageTurn && !kept.includes(imageTurn)) {
+    kept.shift();
+    kept.unshift(imageTurn);
+  }
+  while (kept.length > 1 && kept[0].role !== "user") kept.shift();
+  return kept;
+}
+
 // Runs one provider with retries. Returns { text } on success, or
 // { error, summary, cooldownMs, outOfTime } after its last failed attempt.
-async function tryProvider(provider, { context, question, deadline, onStatus }) {
+async function tryProvider(provider, { history, deadline, onStatus }) {
   let lastError;
   let lastClass;
 
@@ -77,8 +99,7 @@ async function tryProvider(provider, { context, question, deadline, onStatus }) 
 
     try {
       const text = await provider.ask({
-        context,
-        question,
+        history,
         systemInstruction: SYSTEM_INSTRUCTION,
         timeoutMs: Math.min(ATTEMPT_TIMEOUT_MS, remaining),
       });

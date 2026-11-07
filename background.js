@@ -12,7 +12,8 @@ importScripts(
   "background/providers/gemini.js",
   "background/providers/gemini-lite.js",
   "background/providers/groq.js",
-  "background/model.js"
+  "background/model.js",
+  "background/chat.js"
 );
 
 console.log("Screen Explainer service worker started");
@@ -36,17 +37,23 @@ const MESSAGE_HANDLERS = {
     await captureContext(mode, windowId);
     return {};
   },
-  [MESSAGE_TYPES.ASK]: async ({ question, requestId }) => {
-    const onStatus = (text) => {
-      // Ignore the error when no side panel is open to receive it.
-      chrome.runtime
-        .sendMessage({ type: MESSAGE_TYPES.ASK_STATUS, requestId, text })
-        .catch(() => {});
-    };
-    const { text, provider, elapsedMs } = await handleAsk(question, onStatus);
-    return { answer: text, provider, elapsedMs };
+  [MESSAGE_TYPES.ASK]: ({ question, requestId }) => askInChat(question, statusSender(requestId)),
+  [MESSAGE_TYPES.RETRY]: ({ requestId }) => retryInChat(statusSender(requestId)),
+  [MESSAGE_TYPES.NEW_CHAT]: async () => {
+    await clearChat();
+    return {};
   },
 };
+
+// Progress updates for the side panel that sent requestId.
+function statusSender(requestId) {
+  return (text) => {
+    // Ignore the error when no side panel is open to receive it.
+    chrome.runtime
+      .sendMessage({ type: MESSAGE_TYPES.ASK_STATUS, requestId, text })
+      .catch(() => {});
+  };
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handler = MESSAGE_HANDLERS[message?.type];
@@ -59,13 +66,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Keep the message channel open for the async reply.
   return true;
 });
-
-async function handleAsk(question, onStatus) {
-  const { [STORAGE_KEYS.LATEST_CONTEXT]: context } = await chrome.storage.session.get(
-    STORAGE_KEYS.LATEST_CONTEXT
-  );
-  if (!context) {
-    throw new Error("Nothing captured yet. Choose an option above first.");
-  }
-  return askModel(context, question, { onStatus });
-}

@@ -1,6 +1,26 @@
+/* Full-height column so the message list scrolls and the question box stays at the bottom. */
+html,
+body {
+  height: 100%;
+}
+
 body {
   font-family: system-ui, sans-serif;
-  margin: 12px;
+  margin: 0;
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+h1 {
+  font-size: 1.3em;
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: 1em;
+  margin: 8px 0;
 }
 
 #mode-buttons {
@@ -11,26 +31,88 @@ body {
 
 #preview-image {
   max-width: 100%;
+  max-height: 160px;
+  object-fit: contain;
 }
 
 #preview-text {
   white-space: pre-wrap;
   background: #f4f4f4;
   padding: 8px;
-  max-height: 200px;
+  max-height: 120px;
   overflow: auto;
 }
 
-#preview-meta,
-#answer-source {
+.meta {
   color: #666;
-  font-size: 0.9em;
-}
-
-#answer {
-  white-space: pre-wrap;
+  font-size: 0.85em;
 }
 
 .error {
   color: #b00020;
+  white-space: pre-wrap;
+}
+
+#chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header,
+.context-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#messages {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.message {
+  max-width: 90%;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.message.user {
+  align-self: flex-end;
+  background: #dbe8ff;
+}
+
+.message.assistant {
+  align-self: flex-start;
+  background: #f1f1f1;
+}
+
+.message-text {
+  white-space: pre-wrap;
+}
+
+.message .meta {
+  margin-top: 4px;
+}
+
+#chat-status {
+  margin: 4px 0;
+  min-height: 1em;
+}
+
+#ask-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#question {
+  flex: 1;
 }

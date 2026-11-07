@@ -7,32 +7,20 @@ const GROQ_MAX_TOKENS = 400;
 const groqProvider = {
   id: "groq",
   name: "Groq",
+  supportsImages: true,
 
   isConfigured() {
     return typeof GROQ_API_KEY !== "undefined" && Boolean(GROQ_API_KEY);
   },
 
-  async ask({ context, question, systemInstruction, timeoutMs }) {
-    // OpenAI-compatible chat format; images go in as data URLs unchanged.
-    const content = [];
-    if (context.imageDataUrl) {
-      content.push({ type: "image_url", image_url: { url: context.imageDataUrl } });
-    }
-    if (context.text) {
-      content.push({ type: "text", text: `Text from the page:\n\n${context.text}` });
-    }
-    content.push({ type: "text", text: question });
-
+  async ask({ history, systemInstruction, timeoutMs }) {
     const data = await postJson(
       "https://api.groq.com/openai/v1/chat/completions",
       { Authorization: `Bearer ${GROQ_API_KEY}` },
       {
         model: GROQ_MODEL,
         max_tokens: GROQ_MAX_TOKENS,
-        messages: [
-          { role: "system", content: systemInstruction },
-          { role: "user", content },
-        ],
+        messages: [{ role: "system", content: systemInstruction }, ...history.map(toGroqMessage)],
       },
       { timeoutMs }
     );
@@ -45,3 +33,19 @@ const groqProvider = {
     return text;
   },
 };
+
+// Chat turn -> OpenAI-compatible message. Images go in as data URLs unchanged.
+function toGroqMessage(turn) {
+  if (turn.role === "assistant") {
+    return { role: "assistant", content: turn.text };
+  }
+  const content = [];
+  if (turn.imageDataUrl) {
+    content.push({ type: "image_url", image_url: { url: turn.imageDataUrl } });
+  }
+  if (turn.pageText) {
+    content.push({ type: "text", text: `Text from the page:\n\n${turn.pageText}` });
+  }
+  content.push({ type: "text", text: turn.text });
+  return { role: "user", content };
+}
