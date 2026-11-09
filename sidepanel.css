@@ -1,118 +1,448 @@
-/* Full-height column so the message list scrolls and the question box stays at the bottom. */
+/* ---- Theme ----
+   Light is the default. Dark applies when the system asks for it, unless the
+   user picked Light; data-theme="dark" / "light" are manual overrides. */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #f6f1e7;
+  --surface: #fbf8f1;
+  --text: #1f1b16;
+  --muted: #6b645a;
+  --border: #ddd5c4;
+  --accent: #234e8c;
+  --on-accent: #fbf8f1;
+  --error: #a6361f;
+  --error-bg: #f7e4de;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: Charter, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* 4px spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  --radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171512;
+    --surface: #1e1b17;
+    --text: #e8e1d3;
+    --muted: #9a9283;
+    --border: #332e27;
+    --accent: #8fb0e6;
+    --on-accent: #14110d;
+    --error: #e58a74;
+    --error-bg: #2b1a16;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #171512;
+  --surface: #1e1b17;
+  --text: #e8e1d3;
+  --muted: #9a9283;
+  --border: #332e27;
+  --accent: #8fb0e6;
+  --on-accent: #14110d;
+  --error: #e58a74;
+  --error-bg: #2b1a16;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* ---- Base ---- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body {
   height: 100%;
 }
 
 body {
-  font-family: system-ui, sans-serif;
   margin: 0;
-  padding: 12px;
-  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  /* Flex column: only the conversation scrolls. */
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+p {
+  margin: 0;
 }
 
 h1 {
-  font-size: 1.3em;
-  margin: 0 0 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-h2 {
-  font-size: 1em;
-  margin: 8px 0;
-}
-
-#mode-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-#preview-image {
+img {
   max-width: 100%;
-  max-height: 160px;
-  object-fit: contain;
 }
 
-#preview-text {
-  white-space: pre-wrap;
-  background: #f4f4f4;
-  padding: 8px;
-  max-height: 120px;
-  overflow: auto;
+[hidden] {
+  display: none !important;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .meta {
-  color: #666;
-  font-size: 0.85em;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
 }
 
-.error {
-  color: #b00020;
-  white-space: pre-wrap;
+/* ---- Buttons ---- */
+
+button {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
 }
 
-#chat {
-  flex: 1;
-  min-height: 0;
+button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.text-button {
+  border-color: transparent;
+  background: transparent;
+  padding: 0 var(--space-2);
+}
+
+.text-button:hover:not(:disabled) {
+  border-color: var(--border);
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+button.primary:disabled {
+  opacity: 0.6;
+  color: var(--on-accent);
+}
+
+/* Joined button group; wraps when there are many options. */
+.segmented {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
 }
 
-.chat-header,
-.context-row {
+.segmented > button {
+  border-radius: 0;
+  margin-left: -1px;
+}
+
+.segmented > button:first-child {
+  margin-left: 0;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.segmented > button:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.segmented > button:only-child {
+  border-radius: var(--radius);
+}
+
+.segmented > button:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+.segmented > button.is-active,
+.segmented > button[aria-pressed="true"] {
+  position: relative;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.segmented-small > button {
+  padding: 0 var(--space-2);
+}
+
+/* ---- Header ---- */
+
+.panel-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
 }
 
-#messages {
-  flex: 1;
-  min-height: 120px;
-  overflow-y: auto;
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---- Capture ---- */
+
+.capture {
+  padding: var(--space-3) var(--space-4) var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 4px 0;
+  gap: var(--space-2);
+}
+
+/* "Error: ..." from a capture stays neutral; red is reserved for the answer error block. */
+.capture-status.error {
+  color: var(--text);
+}
+
+.capture-status:empty {
+  display: none;
+}
+
+.capture-chip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.capture-chip > .meta:empty {
+  display: none;
+}
+
+.chip-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.thumb-button {
+  flex: none;
+  width: 42px;
+  min-height: 32px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.thumb-button img {
+  display: block;
+  width: 40px;
+  height: 30px;
+  object-fit: cover;
+}
+
+.chip-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chip-first-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-large {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.preview-large img {
+  display: block;
+  width: 100%;
+  max-height: 40vh;
+  object-fit: contain;
+}
+
+/* ---- Conversation ---- */
+
+.conversation {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.empty-state {
+  padding: var(--space-4) 0;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .message {
-  max-width: 90%;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: var(--space-3) 0 var(--space-1);
 }
 
-.message.user {
-  align-self: flex-end;
-  background: #dbe8ff;
+.message.user:not(:first-child) {
+  border-top: 1px solid var(--border);
 }
 
-.message.assistant {
-  align-self: flex-start;
-  background: #f1f1f1;
-}
-
-.message-text {
+.message.user .message-text {
+  font-weight: 500;
   white-space: pre-wrap;
 }
 
+.message.assistant {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-3);
+}
+
+.message.assistant .message-text {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.message.pending .message-text {
+  color: var(--muted);
+}
+
 .message .meta {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
-#chat-status {
-  margin: 4px 0;
-  min-height: 1em;
+.is-new {
+  animation: fade-in 150ms ease-out;
 }
 
-#ask-form {
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-new {
+    animation: none;
+  }
+}
+
+/* ---- Error block (the only place red is used) ---- */
+
+.error-block {
+  margin: var(--space-2) 0 var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--error);
+  border-radius: var(--radius);
+  background: var(--error-bg);
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
 
-#question {
+.error-title {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.error-block details {
+  width: 100%;
+}
+
+.error-block summary {
+  cursor: pointer;
+  color: var(--muted);
+  min-height: 24px;
+}
+
+.error-block pre {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Composer ---- */
+
+.composer-area {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.status-line {
+  min-height: 16px;
+  margin-bottom: var(--space-2);
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.composer textarea {
   flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  /* About 5 lines (18px each) plus padding; sidepanel.js grows it up to this. */
+  max-height: 106px;
+  padding: 6px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  line-height: 18px;
+  resize: none;
+  overflow-y: auto;
+}
+
+.composer textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }

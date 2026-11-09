@@ -15,6 +15,8 @@ const STORAGE_KEYS = Object.freeze({
   // Array of { role: "user"|"assistant", text, at, imageDataUrl?, pageText?,
   // capturedAt?, provider? }. See background/chat.js.
   CHAT_HISTORY: "chatHistory",
+  // In chrome.storage.local (persists across browser restarts): "system" | "light" | "dark".
+  THEME: "theme",
 });
 
 // Options shown in the side panel, in display order. `noun` is used in

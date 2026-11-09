@@ -2,48 +2,87 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Screen Explainer</title>
     <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
-    <h1>Screen Explainer</h1>
+    <header class="panel-header">
+      <h1>Screen Explainer</h1>
+      <div class="header-actions">
+        <div id="theme-switch" class="segmented segmented-small" role="group" aria-label="Theme">
+          <button type="button" data-theme-choice="system">System</button>
+          <button type="button" data-theme-choice="light">Light</button>
+          <button type="button" data-theme-choice="dark">Dark</button>
+        </div>
+        <button id="new-chat" class="text-button" type="button">New chat</button>
+      </div>
+    </header>
 
-    <section>
-      <h2>What should I look at?</h2>
+    <section class="capture" aria-label="Capture">
       <!-- Filled from CAPTURE_MODES in shared/constants.js -->
-      <div id="mode-buttons"></div>
-      <p id="capture-status"></p>
-    </section>
+      <div id="mode-buttons" class="segmented" role="group" aria-label="Capture options"></div>
+      <p id="capture-status" class="meta capture-status"></p>
 
-    <section id="preview" hidden>
-      <p id="preview-meta" class="meta"></p>
-      <img id="preview-image" alt="Captured screen" hidden />
-      <div id="preview-text" hidden></div>
-    </section>
-
-    <section id="chat">
-      <div class="chat-header">
-        <h2>Chat</h2>
-        <button id="new-chat" type="button">New chat</button>
-      </div>
-
-      <div id="messages"></div>
-
-      <div id="chat-error" hidden>
-        <p id="chat-error-text" class="error"></p>
-        <button id="retry" type="button">Retry</button>
-      </div>
-      <p id="chat-status" class="meta"></p>
-
-      <div class="context-row">
+      <div class="capture-chip">
+        <div id="preview" class="chip-content" hidden>
+          <button
+            id="preview-toggle"
+            class="thumb-button"
+            type="button"
+            aria-expanded="false"
+            aria-controls="preview-large"
+            aria-label="Show larger screenshot"
+            hidden
+          >
+            <img id="preview-image" alt="" hidden />
+          </button>
+          <div class="chip-body">
+            <span id="preview-meta" class="meta"></span>
+            <span id="preview-text" class="chip-first-line" hidden></span>
+          </div>
+          <button id="look-again" class="text-button" type="button" hidden>Look again</button>
+        </div>
         <span id="context-line" class="meta"></span>
-        <button id="look-again" type="button">Look again</button>
       </div>
-      <form id="ask-form">
-        <input id="question" type="text" placeholder="Ask about what you captured" required />
-        <button id="ask-button" type="submit">Ask</button>
-      </form>
+
+      <div id="preview-large" class="preview-large" hidden>
+        <img id="preview-large-image" alt="Captured screenshot" />
+      </div>
     </section>
+
+    <main id="conversation" class="conversation">
+      <div id="empty-state" class="empty-state" hidden>
+        <p id="empty-shortcut"></p>
+        <p>Capture the screen or some selected text.</p>
+        <p>Then ask a question about it.</p>
+      </div>
+
+      <div id="messages" aria-live="polite"></div>
+
+      <div id="chat-error" class="error-block" hidden>
+        <p class="error-title">Couldn't get an answer</p>
+        <p id="chat-error-text"></p>
+        <button id="retry" type="button">Try again</button>
+        <details id="chat-error-details" hidden>
+          <summary>Details</summary>
+          <pre id="chat-error-list"></pre>
+        </details>
+      </div>
+    </main>
+
+    <footer class="composer-area">
+      <p id="chat-status" class="meta status-line" aria-live="polite"></p>
+      <form id="ask-form" class="composer">
+        <textarea
+          id="question"
+          rows="1"
+          aria-label="Question"
+          placeholder="Ask about what you captured"
+        ></textarea>
+        <button id="ask-button" class="primary" type="submit">Ask</button>
+      </form>
+    </footer>
 
     <script src="shared/constants.js"></script>
     <script src="sidepanel.js"></script>

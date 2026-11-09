@@ -20,9 +20,10 @@ async function saveChatHistory(history) {
   await chrome.storage.session.set({ [STORAGE_KEYS.CHAT_HISTORY]: history });
 }
 
+// New chat starts from a blank slate: no history and no capture.
 async function clearChat() {
   chatGeneration++;
-  await chrome.storage.session.remove(STORAGE_KEYS.CHAT_HISTORY);
+  await chrome.storage.session.remove([STORAGE_KEYS.CHAT_HISTORY, STORAGE_KEYS.LATEST_CONTEXT]);
 }
 
 // Adds a user turn and gets an answer. If the previous question never got an
