@@ -242,7 +242,7 @@ function turnKey(turn) {
 
 function renderTurn(turn) {
   if (turn.role === "assistant") {
-    return renderBubble("assistant", turn.text, answerMeta(turn));
+    return renderBubble("assistant", turn.text, answerMeta(turn), { markdown: true });
   }
   let meta = "";
   if (turn.pageText) {
@@ -263,17 +263,23 @@ function answerMeta(turn) {
 }
 
 function updateMeta(el, text) {
-  const metaEl = el.querySelector(".meta");
+  const metaEl = el.querySelector(":scope > .meta");
   if (metaEl && metaEl.textContent !== text) metaEl.textContent = text;
 }
 
-function renderBubble(role, text, meta) {
+// Answers are rendered as Markdown (markdown.js, no innerHTML); questions stay plain text.
+function renderBubble(role, text, meta, { markdown = false } = {}) {
   const bubble = document.createElement("div");
   bubble.className = `message ${role}`;
 
   const body = document.createElement("div");
-  body.className = "message-text";
-  body.textContent = text;
+  if (markdown) {
+    body.className = "message-text markdown";
+    body.append(renderMarkdown(text));
+  } else {
+    body.className = "message-text";
+    body.textContent = text;
+  }
   bubble.append(body);
 
   if (meta) {
