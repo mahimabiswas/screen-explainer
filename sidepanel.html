@@ -10,70 +10,73 @@
     <header class="panel-header">
       <h1>Screen Explainer</h1>
       <div class="header-actions">
-        <div id="theme-switch" class="segmented segmented-small" role="group" aria-label="Theme">
-          <button type="button" data-theme-choice="system">System</button>
-          <button type="button" data-theme-choice="light">Light</button>
-          <button type="button" data-theme-choice="dark">Dark</button>
-        </div>
         <button id="new-chat" class="text-button" type="button">New chat</button>
+        <!-- Cycles System -> Light -> Dark; label is set by sidepanel.js -->
+        <button id="theme-switch" class="text-button" type="button">Theme: System</button>
       </div>
     </header>
 
-    <section class="capture" aria-label="Capture">
-      <!-- Filled from CAPTURE_MODES in shared/constants.js -->
-      <div id="mode-buttons" class="segmented" role="group" aria-label="Capture options"></div>
-      <p id="capture-status" class="meta capture-status"></p>
-
-      <div class="capture-chip">
-        <div id="preview" class="chip-content" hidden>
-          <button
-            id="preview-toggle"
-            class="thumb-button"
-            type="button"
-            aria-expanded="false"
-            aria-controls="preview-large"
-            aria-label="Show larger screenshot"
-            hidden
-          >
-            <img id="preview-image" alt="" hidden />
-          </button>
-          <div class="chip-body">
-            <span id="preview-meta" class="meta"></span>
-            <span id="preview-text" class="chip-first-line" hidden></span>
+    <div class="conversation-wrap">
+      <main id="conversation" class="conversation">
+        <div class="conversation-inner">
+          <div id="empty-state" class="empty-state" hidden>
+            <p id="empty-shortcut"></p>
+            <p>Capture the screen or some selected text.</p>
+            <p>Then ask a question about it.</p>
           </div>
-          <button id="look-again" class="text-button" type="button" hidden>Look again</button>
+
+          <div id="messages" aria-live="polite"></div>
+
+          <div id="chat-error" class="error-block" hidden>
+            <p class="error-title">Couldn't get an answer</p>
+            <p id="chat-error-text"></p>
+            <button id="retry" type="button">Try again</button>
+            <details id="chat-error-details" hidden>
+              <summary>Details</summary>
+              <pre id="chat-error-list"></pre>
+            </details>
+          </div>
         </div>
-        <span id="context-line" class="meta"></span>
+      </main>
+      <button id="jump-latest" class="jump-latest" type="button" hidden>Jump to latest</button>
+    </div>
+
+    <p id="chat-status" class="meta status-line" aria-live="polite"></p>
+
+    <footer class="composer">
+      <div class="capture-row">
+        <span class="meta capture-label">Capture</span>
+        <!-- Filled from CAPTURE_MODES in shared/constants.js -->
+        <div id="mode-buttons" class="mode-buttons" role="group" aria-label="Capture options"></div>
       </div>
+      <p id="capture-status" class="meta capture-status"></p>
 
       <div id="preview-large" class="preview-large" hidden>
         <img id="preview-large-image" alt="Captured screenshot" />
       </div>
-    </section>
 
-    <main id="conversation" class="conversation">
-      <div id="empty-state" class="empty-state" hidden>
-        <p id="empty-shortcut"></p>
-        <p>Capture the screen or some selected text.</p>
-        <p>Then ask a question about it.</p>
+      <div id="preview" class="attachment" hidden>
+        <button
+          id="preview-toggle"
+          class="thumb-button"
+          type="button"
+          aria-expanded="false"
+          aria-controls="preview-large"
+          aria-label="Show larger screenshot"
+          hidden
+        >
+          <img id="preview-image" alt="" hidden />
+        </button>
+        <div class="attachment-body">
+          <span id="preview-meta" class="meta"></span>
+          <span id="preview-text" class="attachment-first-line" hidden></span>
+        </div>
+        <button id="look-again" class="text-button" type="button" hidden>Look again</button>
+        <button id="remove-capture" class="text-button" type="button">Remove</button>
       </div>
+      <p id="context-line" class="meta context-line"></p>
 
-      <div id="messages" aria-live="polite"></div>
-
-      <div id="chat-error" class="error-block" hidden>
-        <p class="error-title">Couldn't get an answer</p>
-        <p id="chat-error-text"></p>
-        <button id="retry" type="button">Try again</button>
-        <details id="chat-error-details" hidden>
-          <summary>Details</summary>
-          <pre id="chat-error-list"></pre>
-        </details>
-      </div>
-    </main>
-
-    <footer class="composer-area">
-      <p id="chat-status" class="meta status-line" aria-live="polite"></p>
-      <form id="ask-form" class="composer">
+      <form id="ask-form" class="ask-row">
         <textarea
           id="question"
           rows="1"

@@ -27,6 +27,11 @@ const lookAgainButton = document.getElementById("look-again");
 const form = document.getElementById("ask-form");
 const questionInput = document.getElementById("question");
 const askButton = document.getElementById("ask-button");
+const removeCaptureButton = document.getElementById("remove-capture");
+const jumpLatestButton = document.getElementById("jump-latest");
+
+// Auto-scroll only when the reader is already this close to the bottom.
+const NEAR_BOTTOM_PX = 80;
 
 // Mirrors of storage.session, kept current by storage.onChanged.
 let chatHistory = [];
@@ -58,6 +63,10 @@ function formatTime(ms) {
 
 // ---- Theme ----
 
+const THEME_CYCLE = ["system", "light", "dark"];
+const THEME_LABELS = { system: "System", light: "Light", dark: "Dark" };
+let currentTheme = "system";
+
 // "system" removes data-theme so the CSS follows prefers-color-scheme.
 function applyTheme(choice) {
   if (choice === "light" || choice === "dark") {
@@ -66,16 +75,15 @@ function applyTheme(choice) {
     delete document.documentElement.dataset.theme;
     choice = "system";
   }
-  for (const button of themeSwitch.querySelectorAll("button")) {
-    button.setAttribute("aria-pressed", String(button.dataset.themeChoice === choice));
-  }
+  currentTheme = choice;
+  themeSwitch.textContent = `Theme: ${THEME_LABELS[choice]}`;
 }
 
-themeSwitch.addEventListener("click", (event) => {
-  const choice = event.target.closest("button")?.dataset.themeChoice;
-  if (!choice) return;
-  applyTheme(choice);
-  chrome.storage.local.set({ [STORAGE_KEYS.THEME]: choice });
+// One button that cycles System -> Light -> Dark.
+themeSwitch.addEventListener("click", () => {
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(currentTheme) + 1) % THEME_CYCLE.length];
+  applyTheme(next);
+  chrome.storage.local.set({ [STORAGE_KEYS.THEME]: next });
 });
 
 chrome.storage.local.get(STORAGE_KEYS.THEME).then((items) => {
@@ -136,6 +144,7 @@ function setModeButtonsDisabled(disabled) {
     button.disabled = disabled;
   }
   lookAgainButton.disabled = disabled;
+  removeCaptureButton.disabled = disabled;
 }
 
 async function capture(mode) {
@@ -174,13 +183,40 @@ for (const mode of CAPTURE_MODES) {
 // "Look again" takes a fresh screenshot; it's attached to the next question.
 lookAgainButton.addEventListener("click", () => capture(modeFor("screen")));
 
+// "Remove" clears the saved capture; the chip hides through storage.onChanged.
+removeCaptureButton.addEventListener("click", () => {
+  setMessage(captureStatus, "");
+  chrome.storage.session.remove(STORAGE_KEYS.LATEST_CONTEXT);
+});
+
 // ---- Chat rendering ----
 
 emptyShortcut.textContent = IS_MAC
   ? "Press Option+Shift+E on any page."
   : "Press Alt+Shift+E on any page.";
 
-function renderChat() {
+function isNearBottom() {
+  const { scrollHeight, scrollTop, clientHeight } = conversationEl;
+  return scrollHeight - scrollTop - clientHeight <= NEAR_BOTTOM_PX;
+}
+
+function scrollToLatest() {
+  conversationEl.scrollTop = conversationEl.scrollHeight;
+  jumpLatestButton.hidden = true;
+}
+
+jumpLatestButton.addEventListener("click", scrollToLatest);
+conversationEl.addEventListener("scroll", () => {
+  if (isNearBottom()) jumpLatestButton.hidden = true;
+});
+
+let firstRender = true;
+
+// forceScroll: the reader just sent a question, so follow it even if scrolled up.
+function renderChat({ forceScroll = false } = {}) {
+  // Measure before the DOM changes: were we following the conversation?
+  const wasNearBottom = isNearBottom();
+  const errorWasHidden = chatError.hidden;
   const added = renderMessages();
 
   emptyState.hidden = waiting || chatHistory.length > 0;
@@ -195,12 +231,17 @@ function renderChat() {
 
   renderContextLine();
   askButton.disabled = waiting;
+  askButton.textContent = waiting ? "Asking..." : "Ask";
   retryButton.disabled = waiting;
   newChatButton.disabled = waiting;
 
-  if (added || !chatError.hidden) {
-    conversationEl.scrollTop = conversationEl.scrollHeight;
+  const appeared = added || (errorWasHidden && !chatError.hidden);
+  if (firstRender || forceScroll || (appeared && wasNearBottom)) {
+    scrollToLatest();
+  } else if (appeared) {
+    jumpLatestButton.hidden = false;
   }
+  firstRender = false;
 }
 
 // Adds new turns and removes stale ones without rebuilding the rest, so the
@@ -253,21 +294,22 @@ function renderTurn(turn) {
   return renderBubble("user", turn.text, meta);
 }
 
-// "Answered by Groq, 2.1s" if this panel timed it, otherwise "Answered by Groq, 14:32".
+// "Groq, 2.1s" if this panel timed it, otherwise "Groq, 14:32".
 function answerMeta(turn) {
   const timing = answerTimings.findLast(
     (t) => t.provider === turn.provider && t.since <= turn.at
   );
   const when = timing ? `${(timing.elapsedMs / 1000).toFixed(1)}s` : formatTime(turn.at);
-  return `Answered by ${turn.provider}, ${when}`;
+  return `${turn.provider}, ${when}`;
 }
 
 function updateMeta(el, text) {
-  const metaEl = el.querySelector(":scope > .meta");
+  const metaEl = el.querySelector(".answer-meta > .meta");
   if (metaEl && metaEl.textContent !== text) metaEl.textContent = text;
 }
 
-// Answers are rendered as Markdown (markdown.js, no innerHTML); questions stay plain text.
+// Answers are rendered as Markdown (markdown.js, no innerHTML) with a meta row
+// and a Copy button; questions stay plain text.
 function renderBubble(role, text, meta, { markdown = false } = {}) {
   const bubble = document.createElement("div");
   bubble.className = `message ${role}`;
@@ -282,13 +324,39 @@ function renderBubble(role, text, meta, { markdown = false } = {}) {
   }
   bubble.append(body);
 
-  if (meta) {
+  if (markdown) {
+    const row = document.createElement("div");
+    row.className = "answer-meta";
+    const metaEl = document.createElement("span");
+    metaEl.className = "meta";
+    metaEl.textContent = meta;
+    row.append(metaEl, copyButton(text));
+    bubble.append(row);
+  } else if (meta) {
     const metaEl = document.createElement("div");
     metaEl.className = "meta";
     metaEl.textContent = meta;
     bubble.append(metaEl);
   }
   return bubble;
+}
+
+// Copies the raw answer text; shows "Copied" for 1.5s.
+function copyButton(text) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "text-button";
+  button.textContent = "Copy";
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Couldn't copy";
+    }
+    setTimeout(() => (button.textContent = "Copy"), 1500);
+  });
+  return button;
 }
 
 // Under the capture chip: empty state, or a note if the capture hasn't been sent yet.
@@ -312,7 +380,7 @@ async function sendChatRequest(type, payload = {}) {
   waiting = true;
   lastError = null;
   chatStatus.textContent = "";
-  renderChat();
+  renderChat({ forceScroll: true });
 
   try {
     const reply = await chrome.runtime.sendMessage({ type, requestId, ...payload });
